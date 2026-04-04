@@ -50,13 +50,13 @@ export default function AdminDashboard() {
 
   const handleDuplicate = async (activity: Activity) => {
     const group = prompt(
-      `Duplicar "${activity.name}"\n\nIngresa el nombre del grupo para la copia (ej: 10B, 11A):`,
+      `Duplicar "${activity.name}"\n\nIngresa el nombre del grupo para la copia (ej: 10B, 11A):\n(Puedes dejarlo vacío)`,
       ""
     );
     if (group === null) return;
     const sb = getSupabaseClient();
 
-    const { data: newAct } = await sb.from("activities").insert({
+    const insertData: Record<string, unknown> = {
       name: activity.name,
       subject: activity.subject,
       description: activity.description,
@@ -64,8 +64,26 @@ export default function AdminDashboard() {
       type: activity.type,
       access_code: generateCode(),
       guide_url: activity.guide_url,
-      group_name: group.trim() || null,
-    }).select().single();
+    };
+
+    const groupTrimmed = group.trim();
+    if (groupTrimmed) insertData.group_name = groupTrimmed;
+
+    const { data: newAct, error: insertErr } = await sb
+      .from("activities")
+      .insert(insertData)
+      .select()
+      .single();
+
+    if (insertErr || !newAct) {
+      alert(
+        `Error al duplicar la actividad.\n\n` +
+        (insertErr?.message ?? "Respuesta vacía de Supabase") +
+        `\n\nSi la columna 'group_name' no existe, ejecuta en Supabase SQL Editor:\n` +
+        `ALTER TABLE activities ADD COLUMN IF NOT EXISTS group_name TEXT;`
+      );
+      return;
+    }
 
     const newId = (newAct as Activity).id;
 
