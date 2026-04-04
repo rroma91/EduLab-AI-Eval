@@ -122,7 +122,7 @@ export default function GradesPage() {
       grade: s.grade,
       percentage: s.percentage,
       status: s.status,
-    })));
+    })), activity.group_name ?? undefined);
   };
 
   const handleExportPDF = async () => {
@@ -134,7 +134,7 @@ export default function GradesPage() {
       percentage: s.percentage,
       status: s.status,
       feedback: s.feedback ?? undefined,
-    })));
+    })), activity.group_name ?? undefined);
   };
 
   const getAnswerDisplay = (answer: string | string[] | number | undefined): string => {
@@ -171,7 +171,14 @@ export default function GradesPage() {
             </svg>
           </button>
           <div className="flex-1 min-w-0">
-            <h1 className="font-semibold truncate">{activity?.name}</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="font-semibold truncate">{activity?.name}</h1>
+              {activity?.group_name && (
+                <span className="shrink-0 text-xs px-2 py-0.5 rounded-full font-bold font-mono bg-amber-500/20 text-amber-400">
+                  {activity.group_name}
+                </span>
+              )}
+            </div>
             <p className="text-xs text-slate-400">{activity?.subject} — {submissions.length} entrega(s)</p>
           </div>
           <div className="flex items-center gap-2">

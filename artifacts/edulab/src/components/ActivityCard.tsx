@@ -6,16 +6,17 @@ interface Props {
   onEdit: () => void;
   onDelete: () => void;
   onGrades: () => void;
+  onDuplicate: () => void;
 }
 
-export default function ActivityCard({ activity, onEdit, onDelete, onGrades }: Props) {
+export default function ActivityCard({ activity, onEdit, onDelete, onGrades, onDuplicate }: Props) {
   const isExpired = new Date(activity.deadline) < new Date();
 
   return (
     <div className="bg-[#111827] border border-slate-700/50 rounded-xl p-5 hover:border-indigo-500/50 transition-all group">
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-1.5 flex-wrap mb-1">
             <span className={cn(
               "text-xs px-2 py-0.5 rounded-full font-medium",
               activity.type === "grupal"
@@ -24,6 +25,11 @@ export default function ActivityCard({ activity, onEdit, onDelete, onGrades }: P
             )}>
               {activity.type === "grupal" ? "Grupal" : "Individual"}
             </span>
+            {activity.group_name && (
+              <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-amber-500/20 text-amber-400 font-mono">
+                {activity.group_name}
+              </span>
+            )}
             {isExpired && (
               <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400">
                 Vencida
@@ -61,6 +67,15 @@ export default function ActivityCard({ activity, onEdit, onDelete, onGrades }: P
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
           Calificaciones
+        </button>
+        <button
+          onClick={onDuplicate}
+          className="p-2 text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition"
+          title="Duplicar para otro grupo"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+          </svg>
         </button>
         <button
           onClick={onEdit}

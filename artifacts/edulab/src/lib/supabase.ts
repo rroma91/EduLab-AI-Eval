@@ -24,6 +24,7 @@ export interface Activity {
   type: "individual" | "grupal";
   access_code: string;
   guide_url: string | null;
+  group_name: string | null;
   created_at: string;
 }
 

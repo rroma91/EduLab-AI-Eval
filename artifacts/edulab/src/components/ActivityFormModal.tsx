@@ -65,6 +65,7 @@ export default function ActivityFormModal({ activity, onClose, onSaved }: Props)
   const [deadline, setDeadline] = useState(activity?.deadline?.slice(0, 10) ?? "");
   const [type, setType] = useState<"individual" | "grupal">(activity?.type ?? "individual");
   const [guideUrl, setGuideUrl] = useState(activity?.guide_url ?? "");
+  const [groupName, setGroupName] = useState(activity?.group_name ?? "");
 
   const [questions, setQuestions] = useState<Partial<Question>[]>([]);
   const [criteria, setCriteria] = useState<Partial<RubricCriteria>[]>([]);
@@ -161,6 +162,7 @@ export default function ActivityFormModal({ activity, onClose, onSaved }: Props)
         deadline,
         type,
         guide_url: guideUrl || null,
+        group_name: groupName.trim() || null,
         ...(isEditing ? {} : { access_code: generateCode() }),
       };
 
@@ -293,16 +295,30 @@ export default function ActivityFormModal({ activity, onClose, onSaved }: Props)
                   </select>
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                  URL Guía PDF (opcional)
-                </label>
-                <input
-                  value={guideUrl}
-                  onChange={(e) => setGuideUrl(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="https://..."
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                    Grupo / Curso (opcional)
+                  </label>
+                  <input
+                    value={groupName}
+                    onChange={(e) => setGroupName(e.target.value.toUpperCase())}
+                    className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Ej: 10A, 11B, 9C"
+                    maxLength={10}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                    URL Guía PDF (opcional)
+                  </label>
+                  <input
+                    value={guideUrl}
+                    onChange={(e) => setGuideUrl(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="https://..."
+                  />
+                </div>
               </div>
             </div>
           )}

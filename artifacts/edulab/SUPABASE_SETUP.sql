@@ -11,8 +11,12 @@ CREATE TABLE IF NOT EXISTS activities (
   type TEXT NOT NULL CHECK (type IN ('individual', 'grupal')),
   access_code TEXT UNIQUE NOT NULL,
   guide_url TEXT,
+  group_name TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Si ya tienes la tabla creada, ejecuta esto para agregar la columna:
+-- ALTER TABLE activities ADD COLUMN IF NOT EXISTS group_name TEXT;
 
 -- Tabla de preguntas
 CREATE TABLE IF NOT EXISTS questions (

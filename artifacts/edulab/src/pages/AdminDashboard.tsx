@@ -3,9 +3,10 @@ import { useLocation } from "wouter";
 import { getSupabaseClient } from "@/lib/supabase";
 import type { Activity } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
-import { cn } from "@/lib/utils";
+import { cn, generateCode } from "@/lib/utils";
 import ActivityFormModal from "@/components/ActivityFormModal";
 import ActivityCard from "@/components/ActivityCard";
+import { getInstitutionInfo } from "@/pages/SettingsPage";
 
 export default function AdminDashboard() {
   const { logout, username } = useAuth();
@@ -15,6 +16,8 @@ export default function AdminDashboard() {
   const [showForm, setShowForm] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [search, setSearch] = useState("");
+  const [filterGroup, setFilterGroup] = useState("");
+  const inst = getInstitutionInfo();
 
   useEffect(() => {
     fetchActivities();
@@ -45,24 +48,92 @@ export default function AdminDashboard() {
     fetchActivities();
   };
 
-  const filtered = activities.filter(
-    (a) =>
+  const handleDuplicate = async (activity: Activity) => {
+    const group = prompt(
+      `Duplicar "${activity.name}"\n\nIngresa el nombre del grupo para la copia (ej: 10B, 11A):`,
+      ""
+    );
+    if (group === null) return;
+    const sb = getSupabaseClient();
+
+    const { data: newAct } = await sb.from("activities").insert({
+      name: activity.name,
+      subject: activity.subject,
+      description: activity.description,
+      deadline: activity.deadline,
+      type: activity.type,
+      access_code: generateCode(),
+      guide_url: activity.guide_url,
+      group_name: group.trim() || null,
+    }).select().single();
+
+    const newId = (newAct as Activity).id;
+
+    const { data: qs } = await sb.from("questions").select("*").eq("activity_id", activity.id).order("order_index");
+    if (qs && (qs as Array<Record<string, unknown>>).length > 0) {
+      await sb.from("questions").insert(
+        (qs as Array<Record<string, unknown>>).map((q) => ({
+          activity_id: newId,
+          order_index: q.order_index,
+          type: q.type,
+          text: q.text,
+          options: q.options,
+          image_url: q.image_url,
+        }))
+      );
+    }
+
+    const { data: rs } = await sb.from("rubric_criteria").select("*").eq("activity_id", activity.id);
+    if (rs && (rs as Array<Record<string, unknown>>).length > 0) {
+      await sb.from("rubric_criteria").insert(
+        (rs as Array<Record<string, unknown>>).map((r) => ({
+          activity_id: newId,
+          name: r.name,
+          superior_desc: r.superior_desc,
+          alto_desc: r.alto_desc,
+          basico_desc: r.basico_desc,
+          bajo_desc: r.bajo_desc,
+        }))
+      );
+    }
+
+    fetchActivities();
+  };
+
+  const allGroups = Array.from(new Set(activities.map((a) => a.group_name).filter(Boolean))) as string[];
+
+  const filtered = activities.filter((a) => {
+    const matchSearch =
       a.name.toLowerCase().includes(search.toLowerCase()) ||
-      a.subject.toLowerCase().includes(search.toLowerCase())
-  );
+      a.subject.toLowerCase().includes(search.toLowerCase());
+    const matchGroup = filterGroup ? a.group_name === filterGroup : true;
+    return matchSearch && matchGroup;
+  });
 
   return (
     <div className="min-h-screen bg-[#0a0f1e] text-white">
       <header className="bg-[#111827] border-b border-slate-700/50 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
+            {inst.logoUrl ? (
+              <img
+                src={inst.logoUrl}
+                alt="Logo"
+                className="w-8 h-8 object-contain rounded-lg bg-white/5"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+              </div>
+            )}
+            <div className="hidden sm:block">
+              <p className="font-bold text-sm leading-tight">{inst.name}</p>
+              <p className="text-slate-500 text-xs">EduLab — Panel Docente</p>
             </div>
-            <span className="font-bold text-lg">EduLab</span>
-            <span className="text-slate-500 text-sm hidden sm:block">Panel Docente</span>
+            <span className="sm:hidden font-bold text-lg">EduLab</span>
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -103,14 +174,43 @@ export default function AdminDashboard() {
           </button>
         </div>
 
-        <div className="mb-6">
+        <div className="flex flex-wrap gap-3 mb-6">
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar por nombre o materia..."
-            className="w-full sm:w-80 bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+            className="flex-1 min-w-52 bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
           />
+          {allGroups.length > 0 && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setFilterGroup("")}
+                className={cn(
+                  "px-3 py-2 text-xs rounded-lg font-medium transition",
+                  filterGroup === ""
+                    ? "bg-indigo-600 text-white"
+                    : "bg-slate-800 text-slate-400 hover:text-white border border-slate-600"
+                )}
+              >
+                Todos
+              </button>
+              {allGroups.map((g) => (
+                <button
+                  key={g}
+                  onClick={() => setFilterGroup(g === filterGroup ? "" : g)}
+                  className={cn(
+                    "px-3 py-2 text-xs rounded-lg font-medium font-mono transition",
+                    filterGroup === g
+                      ? "bg-amber-600 text-white"
+                      : "bg-slate-800 text-amber-400 border border-slate-600 hover:border-amber-500"
+                  )}
+                >
+                  {g}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {loading ? (
@@ -138,6 +238,7 @@ export default function AdminDashboard() {
                 onEdit={() => { setEditingActivity(activity); setShowForm(true); }}
                 onDelete={() => handleDelete(activity.id)}
                 onGrades={() => navigate(`/admin/activity/${activity.id}/grades`)}
+                onDuplicate={() => handleDuplicate(activity)}
               />
             ))}
           </div>
