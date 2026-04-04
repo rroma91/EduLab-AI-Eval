@@ -34,6 +34,17 @@ export function exportToExcel(activityName: string, rows: ExportRow[]): void {
   XLSX.writeFile(wb, `EduLab_${activityName}_Notas.xlsx`);
 }
 
+function stripMarkdown(md: string): string {
+  return md
+    .replace(/#{1,6}\s+/g, "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/\*(.*?)\*/g, "$1")
+    .replace(/`(.*?)`/g, "$1")
+    .replace(/^\s*[-*+]\s+/gm, "• ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 export async function exportToPDF(
   activityName: string,
   subject: string,
@@ -43,20 +54,25 @@ export async function exportToPDF(
   const { default: autoTable } = await import("jspdf-autotable");
 
   const doc = new jsPDF({ orientation: "landscape" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 14;
 
-  doc.setFillColor(15, 23, 42);
-  doc.rect(0, 0, doc.internal.pageSize.getWidth(), 40, "F");
+  const drawHeader = () => {
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, pageW, 40, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(20);
+    doc.setFont("helvetica", "bold");
+    doc.text("EduLab", margin, 18);
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Reporte de Evaluación: ${activityName}`, margin, 28);
+    doc.setFontSize(10);
+    doc.text(`Materia: ${subject}   |   Fecha: ${new Date().toLocaleDateString("es-CO")}`, margin, 36);
+  };
 
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(20);
-  doc.setFont("helvetica", "bold");
-  doc.text("EduLab", 14, 18);
-
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "normal");
-  doc.text(`Reporte de Evaluación: ${activityName}`, 14, 28);
-  doc.setFontSize(10);
-  doc.text(`Materia: ${subject}   |   Fecha: ${new Date().toLocaleDateString("es-CO")}`, 14, 36);
+  drawHeader();
 
   const tableRows: (string | number)[][] = [];
 
@@ -108,6 +124,52 @@ export async function exportToPDF(
       4: { halign: "center" },
     },
   });
+
+  const evaluatedRows = rows.filter((r) => r.feedback && r.feedback.trim());
+  if (evaluatedRows.length === 0) {
+    doc.save(`EduLab_${activityName}_Reporte.pdf`);
+    return;
+  }
+
+  doc.addPage();
+  drawHeader();
+
+  let y = 50;
+
+  doc.setTextColor(60, 60, 60);
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "bold");
+  doc.text("Retroalimentación Individual", margin, y);
+  y += 10;
+
+  for (const row of evaluatedRows) {
+    const feedbackText = stripMarkdown(row.feedback ?? "");
+    const nameLines = [`${row.studentName}  —  Nota: ${row.grade?.toFixed(1) ?? "—"}  (${row.percentage ?? "—"}%)`];
+    const bodyLines = doc.splitTextToSize(feedbackText, pageW - margin * 2 - 4);
+    const blockH = 8 + bodyLines.length * 4.5 + 6;
+
+    if (y + blockH > pageH - 20) {
+      doc.addPage();
+      drawHeader();
+      y = 50;
+    }
+
+    doc.setFillColor(99, 102, 241);
+    doc.roundedRect(margin, y, pageW - margin * 2, 8, 1, 1, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.text(nameLines[0], margin + 3, y + 5.5);
+    y += 10;
+
+    doc.setFillColor(248, 250, 252);
+    doc.rect(margin, y, pageW - margin * 2, bodyLines.length * 4.5 + 4, "F");
+    doc.setTextColor(50, 50, 50);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.text(bodyLines, margin + 3, y + 4);
+    y += bodyLines.length * 4.5 + 10;
+  }
 
   doc.save(`EduLab_${activityName}_Reporte.pdf`);
 }

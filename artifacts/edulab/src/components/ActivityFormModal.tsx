@@ -17,7 +17,6 @@ const STANDARD_CRITERIA = [
     alto_desc: "Comprende bien el tema y presenta ideas claras con algunos análisis propios.",
     basico_desc: "Muestra comprensión básica del tema con algunas imprecisiones o falta de profundidad.",
     bajo_desc: "Evidencia comprensión mínima o incorrecta del tema, con errores significativos.",
-    weight: 25,
   },
   {
     name: "Argumentación y sustentación",
@@ -25,7 +24,6 @@ const STANDARD_CRITERIA = [
     alto_desc: "Argumentos claros con buena sustentación, aunque algunos puntos requieren más evidencia.",
     basico_desc: "Argumentos básicos con sustentación limitada o parcialmente fundamentada.",
     bajo_desc: "Argumentos débiles, sin sustentación clara o con fallas lógicas evidentes.",
-    weight: 25,
   },
   {
     name: "Organización y presentación",
@@ -33,7 +31,6 @@ const STANDARD_CRITERIA = [
     alto_desc: "Buena organización y presentación con errores menores de redacción.",
     basico_desc: "Organización básica con algunas dificultades en la presentación o redacción.",
     bajo_desc: "Desorganizado, con graves errores de presentación o redacción que dificultan la comprensión.",
-    weight: 25,
   },
   {
     name: "Creatividad e innovación",
@@ -41,7 +38,6 @@ const STANDARD_CRITERIA = [
     alto_desc: "Muestra creatividad en algunos aspectos con aportes propios interesantes.",
     basico_desc: "Presenta el trabajo de manera convencional con poca creatividad o aporte propio.",
     bajo_desc: "No muestra creatividad ni aportes propios, repite información sin elaboración.",
-    weight: 25,
   },
 ];
 
@@ -199,7 +195,6 @@ export default function ActivityFormModal({ activity, onClose, onSaved }: Props)
             alto_desc: c.alto_desc,
             basico_desc: c.basico_desc,
             bajo_desc: c.bajo_desc,
-            weight: c.weight,
           }))
         );
       }
@@ -420,22 +415,11 @@ export default function ActivityFormModal({ activity, onClose, onSaved }: Props)
                       className="bg-transparent text-white font-medium text-sm focus:outline-none border-b border-transparent focus:border-indigo-500 flex-1 mr-4"
                       placeholder="Nombre del criterio..."
                     />
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        value={c.weight}
-                        onChange={(e) => updateCriteria(i, "weight", Number(e.target.value))}
-                        className="w-16 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white text-xs text-center focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                        min={1}
-                        max={100}
-                      />
-                      <span className="text-slate-400 text-xs">%</span>
-                      <button onClick={() => removeCriteria(i)} className="text-slate-500 hover:text-red-400 transition">
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
+                    <button onClick={() => removeCriteria(i)} className="text-slate-500 hover:text-red-400 transition">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
                   </div>
                   <div className="space-y-2">
                     {[

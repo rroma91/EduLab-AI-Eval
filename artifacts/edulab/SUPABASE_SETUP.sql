@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS rubric_criteria (
   alto_desc TEXT NOT NULL DEFAULT '',
   basico_desc TEXT NOT NULL DEFAULT '',
   bajo_desc TEXT NOT NULL DEFAULT '',
-  weight INTEGER NOT NULL DEFAULT 25,
+  weight INTEGER DEFAULT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

@@ -46,7 +46,6 @@ export interface RubricCriteria {
   alto_desc: string;
   basico_desc: string;
   bajo_desc: string;
-  weight: number;
   created_at: string;
 }
 
