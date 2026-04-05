@@ -3,32 +3,105 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EduLab - San Francisco de Asís</title>
+    <title>EduLab - I.E. San Francisco de Asís</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
-<body class="bg-blue-50 flex items-center justify-center min-h-screen">
+<body class="bg-gray-100">
     <div id="root"></div>
+
     <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Configuración de variables (Vercel las inyecta automáticamente)
+        const CONFIG = {
+            supabaseUrl: window.env?.VITE_SUPABASE_URL || "",
+            supabaseKey: window.env?.VITE_SUPABASE_ANON_KEY || "",
+            groqKey: window.env?.VITE_GROQ_API_KEY || ""
+        };
+
         function App() {
+            const [view, setView] = useState('inicio'); // inicio, evaluacion, resultado
+
             return (
-                <div className="bg-white p-10 rounded-2xl shadow-2xl text-center max-w-lg border-t-8 border-blue-600">
-                    <h1 className="text-4xl font-extrabold text-blue-800 mb-2">EduLab 🚀</h1>
-                    <p className="text-lg text-gray-600 mb-6 font-medium">Institución Educativa San Francisco de Asís</p>
-                    <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-6">
-                        <p className="font-bold">¡Sistema en Línea!</p>
-                        <p className="text-sm">El despliegue en Vercel ha sido exitoso.</p>
-                    </div>
-                    <button className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full transition duration-300 transform hover:scale-105">
-                        Comenzar Evaluación
-                    </button>
+                <div className="min-h-screen flex flex-col font-sans">
+                    {/* Encabezado Institucional */}
+                    <header className="bg-blue-700 text-white p-4 shadow-lg flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                            <i className="fas fa-microchip text-2xl text-yellow-400"></i>
+                            <div>
+                                <h1 className="font-bold text-xl text-white">EduLab AI</h1>
+                                <p className="text-xs opacity-80 text-white">I.E. San Francisco de Asís</p>
+                            </div>
+                        </div>
+                        <span className="bg-blue-800 px-3 py-1 rounded-full text-xs border border-blue-400">
+                           Tecnología e Informática
+                        </span>
+                    </header>
+
+                    <main className="flex-grow container mx-auto p-4 flex items-center justify-center">
+                        {view === 'inicio' && (
+                            <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center border-b-4 border-blue-600">
+                                <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <i className="fas fa-user-graduate text-3xl text-blue-600"></i>
+                                </div>
+                                <h2 className="text-2xl font-bold text-gray-800 mb-2">¡Bienvenido a la Evaluación!</h2>
+                                <p className="text-gray-600 mb-6 text-sm">
+                                    Esta plataforma utiliza Inteligencia Artificial para ayudarte a aprender mientras te evalúas.
+                                </p>
+                                <button 
+                                    onClick={() => setView('evaluacion')}
+                                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all transform hover:scale-105 shadow-lg"
+                                >
+                                    <i className="fas fa-play mr-2"></i> Comenzar Ahora
+                                </button>
+                            </div>
+                        )}
+
+                        {view === 'evaluacion' && (
+                            <div className="bg-white p-6 rounded-2xl shadow-xl max-w-2xl w-full border-l-4 border-yellow-500">
+                                <div className="flex justify-between items-center mb-4">
+                                    <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">Pregunta 1 de 10</span>
+                                    <span className="text-xs text-gray-400 italic">IA Activa <i className="fas fa-robot text-green-500 ml-1"></i></span>
+                                </div>
+                                <h3 className="text-xl font-semibold text-gray-800 mb-4">¿Cuál es la función principal de un microcontrolador como el ESP32 en un proyecto de robótica?</h3>
+                                
+                                <div className="space-y-3">
+                                    {['Almacenar archivos de video pesados.', 'Procesar datos y controlar sensores/actuadores.', 'Aumentar la velocidad del internet de la casa.', 'Servir como batería para el motor.'].map((opcion, i) => (
+                                        <button key={i} className="w-full text-left p-4 rounded-lg border border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-colors flex items-center gap-3 group">
+                                            <div className="w-8 h-8 rounded-full border-2 border-gray-300 flex items-center justify-center group-hover:border-blue-500 group-hover:bg-blue-500 group-hover:text-white font-bold text-gray-400">
+                                                {String.fromCharCode(65 + i)}
+                                            </div>
+                                            <span className="text-gray-700">{opcion}</span>
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <div className="mt-8 pt-4 border-t border-gray-100 flex justify-between">
+                                    <button onClick={() => setView('inicio')} className="text-gray-400 text-sm hover:text-gray-600">
+                                        Cancelar
+                                    </button>
+                                    <button className="bg-gray-800 text-white px-6 py-2 rounded-lg font-bold hover:bg-black transition-colors">
+                                        Siguiente <i className="fas fa-arrow-right ml-2 text-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </main>
+
+                    {/* Pie de página con el sello del profe Omar */}
+                    <footer className="p-4 text-center text-gray-400 text-xs italic">
+                        Desarrollado por el Dpto. de Tecnología - IESFA © 2026
+                    </footer>
                 </div>
             );
         }
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+
+            const root = ReactDOM.createRoot(document.getElementById('root'));
+            root.render(<App />);
     </script>
 </body>
 </html>
