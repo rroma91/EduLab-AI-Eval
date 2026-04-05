@@ -11,11 +11,13 @@
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
-        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        body { font-family: 'Inter', sans-serif; background-color: #0a0f1e; color: #e2e8f0; }
+        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
+        .iesfa-gradient { background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%); }
     </style>
 </head>
 <body>
@@ -24,155 +26,157 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // --- CONFIGURACIÓN DE APIS ---
-        const SB_URL = window.env?.VITE_SUPABASE_URL || "";
-        const SB_KEY = window.env?.VITE_SUPABASE_ANON_KEY || "";
-        const GROQ_KEY = window.env?.VITE_GROQ_API_KEY || "";
+        // --- CONEXIÓN CON VARIABLES DE ENTORNO ---
+        // Vercel inyecta estas variables si las configuraste en el panel
+        const supabaseUrl = window.env?.VITE_SUPABASE_URL || "https://odgchmoxfewhqttgfaem.supabase.co";
+        const supabaseKey = window.env?.VITE_SUPABASE_ANON_KEY || "";
+        const groqKey = window.env?.VITE_GROQ_API_KEY || "";
         
-        const supabase = net.supabase.createClient(SB_URL, SB_KEY);
+        const supabase = net.supabase.createClient(supabaseUrl, supabaseKey);
 
-        // --- COMPONENTE PRINCIPAL ---
-        function EduLabApp() {
-            const [role, setRole] = useState(null); // 'admin' o 'student'
-            const [isLogged, setIsLogged] = useState(false);
+        function App() {
+            const [view, setView] = useState('landing'); // landing, login, admin, student
             const [activities, setActivities] = useState([]);
-            const [currentActivity, setCurrentActivity] = useState(null);
+            const [loading, setLoading] = useState(false);
 
-            // Cargar actividades al iniciar
+            // Cargar actividades desde Supabase
             useEffect(() => {
-                fetchActivities();
+                const loadData = async () => {
+                    const { data } = await supabase.from('activities').select('*').order('created_at', { ascending: false });
+                    if (data) setActivities(data);
+                };
+                loadData();
             }, []);
 
-            async function fetchActivities() {
-                const { data } = await supabase.from('activities').select('*');
-                if (data) setActivities(data);
-            }
+            // --- LÓGICA DE EVALUACIÓN IA (GROQ) ---
+            const evaluarConIA = async (respuesta, rubrica) => {
+                setLoading(true);
+                try {
+                    const prompt = `Actúa como un docente experto de la I.E. San Francisco de Asís. 
+                    Evalúa la siguiente respuesta basándote estrictamente en esta rúbrica:
+                    ${JSON.stringify(rubrica)}
+                    
+                    CRITERIOS DE NOTA:
+                    - Superior (4.6 - 5.0)
+                    - Alto (4.0 - 4.5)
+                    - Básico (3.0 - 3.9)
+                    - Bajo (1.0 - 2.9)
+                    
+                    Respuesta del estudiante: "${respuesta}"
+                    
+                    Devuelve un JSON con: { "nota": valor_numérico, "desempeno": "Nivel", "feedback": "Retroalimentación constructiva" }`;
 
-            // --- VISTA: SELECCIÓN DE ROL ---
-            if (!role) {
+                    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ model: "llama-3.1-70b-versatile", messages: [{ role: "user", content: prompt }] })
+                    });
+                    const result = await response.json();
+                    return JSON.parse(result.choices[0].message.content);
+                } catch (err) {
+                    console.error("Error calificado:", err);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            // --- VISTA: LANDING INICIAL ---
+            if (view === 'landing') {
                 return (
-                    <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
-                        <img src="https://via.placeholder.com/100?text=IESFA" alt="Logo IESFA" className="mb-6 rounded-full shadow-lg border-4 border-blue-500"/>
-                        <h1 className="text-4xl font-extrabold mb-2 text-white">EduLab AI</h1>
-                        <p className="text-blue-400 font-semibold mb-8 uppercase tracking-widest">I.E. San Francisco de Asís</p>
+                    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-blue-900 via-slate-900 to-black">
+                        <div className="text-center mb-12">
+                            <div className="bg-white/10 p-4 rounded-full inline-block mb-4 border border-white/20">
+                                <i className="fas fa-microchip text-5xl text-blue-400"></i>
+                            </div>
+                            <h1 className="text-5xl font-extrabold text-white tracking-tight">EduLab <span className="text-blue-500 text-3xl font-light">IESFA</span></h1>
+                            <p className="text-slate-400 mt-2 text-lg">Plataforma de Evaluación con IA - Profe Omar Rodríguez</p>
+                        </div>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-2xl">
-                            <button onClick={() => setRole('admin')} className="glass p-8 rounded-2xl hover:bg-blue-600 transition-all transform hover:-translate-y-2 group">
-                                <i className="fas fa-chalkboard-teacher text-5xl mb-4 group-hover:scale-110 transition"></i>
-                                <h2 className="text-2xl font-bold">Panel Docente</h2>
-                                <p className="text-sm opacity-60">Gestionar actividades y calificar con IA</p>
-                            </button>
-                            <button onClick={() => setRole('student')} className="glass p-8 rounded-2xl hover:bg-green-600 transition-all transform hover:-translate-y-2 group">
-                                <i className="fas fa-user-graduate text-5xl mb-4 group-hover:scale-110 transition"></i>
-                                <h2 className="text-2xl font-bold">Estudiante</h2>
-                                <p className="text-sm opacity-60">Ingresar código y realizar actividad</p>
-                            </button>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl">
+                            <div onClick={() => setView('login')} className="glass-card p-10 rounded-3xl cursor-pointer hover:border-blue-500 hover:bg-blue-900/20 transition-all group">
+                                <i className="fas fa-chalkboard-teacher text-4xl mb-4 text-blue-500 group-hover:scale-110 transition"></i>
+                                <h2 className="text-2xl font-bold text-white">Panel Docente</h2>
+                                <p className="text-slate-400 mt-2">Crea actividades, rúbricas y califica con IA.</p>
+                            </div>
+                            <div onClick={() => setView('student')} className="glass-card p-10 rounded-3xl cursor-pointer hover:border-green-500 hover:bg-green-900/20 transition-all group">
+                                <i className="fas fa-user-graduate text-4xl mb-4 text-green-500 group-hover:scale-110 transition"></i>
+                                <h2 className="text-2xl font-bold text-white">Estudiante</h2>
+                                <p className="text-slate-400 mt-2">Ingresa el código de tu actividad para empezar.</p>
+                            </div>
                         </div>
                     </div>
                 );
             }
 
-            // --- PANEL DOCENTE ---
-            if (role === 'admin') {
+            // --- VISTA: ADMIN (SIMULADA) ---
+            if (view === 'login' || view === 'admin') {
                 return (
                     <div className="min-h-screen flex flex-col">
-                        <header className="glass p-4 flex justify-between items-center sticky top-0 z-50">
+                        <nav className="glass-card p-4 flex justify-between items-center px-8 border-b">
                             <div className="flex items-center gap-3">
-                                <button onClick={() => setRole(null)} className="text-gray-400 hover:text-white"><i className="fas fa-arrow-left"></i></button>
-                                <h2 className="font-bold">Docente: Omar Rodríguez</h2>
+                                <i className="fas fa-robot text-blue-500 text-xl"></i>
+                                <span className="font-bold text-xl tracking-tighter">ADMIN PANEL</span>
                             </div>
-                            <div className="text-xs text-right">
-                                <p className="font-bold">I.E. San Francisco de Asís</p>
-                                <p className="opacity-50 tracking-tighter">Tecnología e Informática</p>
-                            </div>
-                        </header>
-                        
-                        <main className="p-6">
-                            <div className="flex justify-between items-center mb-6">
-                                <h3 className="text-2xl font-bold">Actividades por Grupos</h3>
-                                <button className="bg-blue-600 px-4 py-2 rounded-lg font-bold hover:bg-blue-500 transition">
-                                    <i className="fas fa-plus mr-2"></i> Nueva Actividad
+                            <button onClick={() => setView('landing')} className="text-sm text-slate-400 hover:text-white">Cerrar Sesión</button>
+                        </nav>
+
+                        <div className="p-8 max-w-6xl mx-auto w-full">
+                            <div className="flex justify-between items-center mb-10">
+                                <div>
+                                    <h2 className="text-3xl font-bold text-white">Mis Actividades</h2>
+                                    <p className="text-slate-500">Gestión por grupos (10A, 10B, 10C)</p>
+                                </div>
+                                <button className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-blue-900/20">
+                                    <i className="fas fa-plus mr-2"></i> Crear Actividad
                                 </button>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {['10A', '10B', '10C'].map(grupo => (
-                                    <div key={grupo} className="glass p-4 rounded-xl border-l-4 border-blue-500">
-                                        <div className="flex justify-between items-center mb-4">
-                                            <span className="bg-blue-900 text-blue-200 px-3 py-1 rounded-full text-xs font-bold uppercase">{grupo}</span>
-                                            <button className="text-gray-500 hover:text-white" title="Duplicar para otro grupo"><i className="fas fa-copy"></i></button>
+                                    <div key={grupo} className="glass-card p-6 rounded-2xl border-l-4 border-blue-600 hover:translate-y-[-4px] transition">
+                                        <div className="flex justify-between mb-4">
+                                            <span className="bg-blue-600/20 text-blue-400 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest">{grupo}</span>
+                                            <span className="text-xs text-slate-500 italic">Cód: XJ82{grupo}</span>
                                         </div>
-                                        <h4 className="font-bold text-lg mb-1">Manejo de Variables en ESP32</h4>
-                                        <p className="text-xs text-gray-400 mb-4 italic">Código: <span className="text-yellow-400 font-mono font-bold">XJ82L9</span></p>
-                                        <div className="flex justify-between">
-                                            <button className="text-xs bg-gray-700 px-3 py-1 rounded hover:bg-gray-600">Ver Entregas</button>
-                                            <button className="text-xs bg-blue-700 px-3 py-1 rounded hover:bg-blue-600">Editar Rúbrica</button>
+                                        <h3 className="text-lg font-bold text-white mb-2">Programación de Microcontroladores</h3>
+                                        <p className="text-xs text-slate-400 mb-6 line-clamp-2">Evaluación sobre el uso de variables y sensores en proyectos de robótica aplicada.</p>
+                                        <div className="flex gap-2">
+                                            <button className="flex-1 bg-slate-800 py-2 rounded-lg text-xs font-bold hover:bg-slate-700">Entregas</button>
+                                            <button className="flex-1 border border-slate-700 py-2 rounded-lg text-xs font-bold hover:bg-slate-800">Rúbrica</button>
                                         </div>
                                     </div>
                                 ))}
                             </div>
-
-                            {/* TABLA DE CALIFICACIONES (Simulada para visualización) */}
-                            <div className="mt-12 glass rounded-2xl overflow-hidden">
-                                <div className="p-4 bg-gray-800 flex justify-between">
-                                    <h4 className="font-bold">Entregas Recientes</h4>
-                                    <div className="flex gap-2">
-                                        <button className="bg-green-700 px-3 py-1 rounded text-xs"><i className="fas fa-file-excel mr-1"></i> Excel</button>
-                                        <button className="bg-red-700 px-3 py-1 rounded text-xs"><i className="fas fa-file-pdf mr-1"></i> Reporte PDF</button>
-                                    </div>
-                                </div>
-                                <table className="w-full text-left text-sm">
-                                    <thead className="bg-gray-900 text-gray-400 uppercase text-xs">
-                                        <tr>
-                                            <th className="p-4">Estudiante</th>
-                                            <th className="p-4">Grupo</th>
-                                            <th className="p-4">Estado</th>
-                                            <th className="p-4">Nota IA</th>
-                                            <th className="p-4">Acción</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-800">
-                                        <tr>
-                                            <td className="p-4">Taliana Álvarez</td>
-                                            <td className="p-4 font-bold">10A</td>
-                                            <td className="p-4"><span className="bg-yellow-900 text-yellow-300 px-2 py-1 rounded text-xs">Pendiente</span></td>
-                                            <td className="p-4 font-mono">--</td>
-                                            <td className="p-4">
-                                                <button className="bg-blue-600 px-2 py-1 rounded text-xs hover:bg-blue-500">
-                                                    <i className="fas fa-robot"></i> Evaluar con IA
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </main>
+                        </div>
                     </div>
                 );
             }
 
-            // --- INTERFAZ ESTUDIANTE ---
-            if (role === 'student') {
+            // --- VISTA: ESTUDIANTE (ACCESO) ---
+            if (view === 'student') {
                 return (
-                    <div className="min-h-screen flex flex-col items-center justify-center p-4">
-                         <div className="glass p-8 rounded-3xl max-w-md w-full border-t-8 border-green-500">
-                            <button onClick={() => setRole(null)} className="text-gray-500 mb-4 hover:text-white"><i className="fas fa-arrow-left mr-2"></i> Volver</button>
-                            <h2 className="text-2xl font-bold mb-6">Acceso a Actividad</h2>
-                            <div className="space-y-4">
+                    <div className="min-h-screen flex items-center justify-center p-6">
+                        <div className="glass-card p-10 rounded-[2.5rem] max-w-md w-full shadow-2xl border-t-8 border-blue-600">
+                            <button onClick={() => setView('landing')} className="text-slate-500 mb-6 hover:text-white transition"><i className="fas fa-arrow-left mr-2"></i> Volver</button>
+                            <h2 className="text-3xl font-black text-white mb-2">Hola, Estudiante</h2>
+                            <p className="text-slate-400 mb-8 text-sm">Ingresa el código de 6 dígitos proporcionado por el profesor Omar.</p>
+                            
+                            <div className="space-y-6">
                                 <div>
-                                    <label className="block text-xs uppercase font-bold text-gray-500 mb-1">Código de Actividad</label>
-                                    <input type="text" placeholder="EJ: XJ82L9" className="w-full bg-gray-900 border border-gray-700 p-4 rounded-xl text-center font-mono text-2xl uppercase text-yellow-400 focus:border-green-500 outline-none" maxLength="6"/>
+                                    <input type="text" placeholder="_ _ _ _ _ _" className="w-full bg-slate-900 border-2 border-slate-700 p-5 rounded-2xl text-center text-3xl font-mono text-blue-500 uppercase tracking-[1rem] focus:border-blue-500 outline-none transition" />
                                 </div>
-                                <button className="w-full bg-green-600 py-4 rounded-xl font-bold text-lg hover:bg-green-500 shadow-lg transition-all">Ingresar</button>
+                                <button className="w-full bg-blue-600 py-5 rounded-2xl font-bold text-white hover:bg-blue-500 shadow-xl shadow-blue-900/40 transform active:scale-95 transition">
+                                    Acceder a Evaluación
+                                </button>
                             </div>
-                         </div>
+                        </div>
                     </div>
                 );
             }
         }
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<EduLabApp />);
+        root.render(<App />);
     </script>
 </body>
 </html>
